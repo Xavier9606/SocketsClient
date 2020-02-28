@@ -1,55 +1,80 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <vector>
 #include <winsock2.h>
 #include "ClientAPI.h"
 #include <thread>
 #include <mutex>
+#include <time.h>
 
-using namespace std;
-mutex m;
+std::mutex m;
 
-ClientAPI client;
+ClientAPI clients[10];
+//ClientAPI client, client2;
+int clientCount = 0;
 
 
-void clientThreadLoop(int n) {
-  m.lock();
-
-  cout << "Client " << n << " active" << endl;
-   int i=0;
-   string massage;
-  while(true){
-    massage="Client ";
-    massage+=n;
-    massage+=" says ";
-    massage+=i;
-    client.sendMsg((char*)massage.c_str());
-    i++;
+void clientReceiverLoop(int clientId) {
+  while (true) {
+    std::cout << std::endl << "[ Client " << clientId << " ]<--" << clients[clientCount].receiveMsg() << std::endl
+              << std::flush;
+    std::cout << "[ Client " << clientId << " ]--> " << std::flush;
   }
-  m.unlock();
 }
 
-void connect1() {
-  client.initConnection();
-  client.sendMsg("Hello Web!");
-  cout << client.receiveMsg() << endl;
+
+void clientInitLoop() {
+  m.lock();
+  clients[clientCount].initConnection();
+  // Sleep(500);
+  int clientId = strtol(clients[clientCount].receiveMsg(), nullptr, 0);
+  clientCount++;
+  if (clientCount > 0) { clientCount = 0; };//comment this to create more than 1 thread in 1 file
+  std::cout << "Client " << clientId << " active" << std::endl;
+  m.unlock();
+
+  std::string massage = " ";
+  std::thread clientReceiver(clientReceiverLoop, clientId);
+
+  // int i = 0;
+  while (true) {
+//    massage = "Rep ";
+//    massage += std::to_string(rand() % 100);
+//    massage += " # ";
+//    massage += std::to_string(i);
+    std::cout << "[ Client " << clientId << " ]--> " << std::flush;
+    std::cin.getline((char *) massage.c_str(), 1024);
+    //std::cout << std::endl << std::flush;
+    clients[clientCount].sendMsg((char *) massage.c_str());
+    //i++;
+    Sleep(10);
+  }
+
 }
+
 
 int main() {
+  srand(time(NULL));
 
-  int threadCount = 2;
+  std::thread clientThread1(clientInitLoop);
+  clientThread1.detach();
+  //Sleep(500);
+//  std::thread clientThread2(clientInitLoop);
+//  clientThread2.detach();
+// // Sleep(500);
+//  std::thread clientThread3(clientInitLoop, clientCount);
+//  clientThread3.detach();
+// // Sleep(500);
+//  std::thread clientThread4(clientInitLoop, clientCount);
+//  clientThread4.detach();
+// // Sleep(500);
+//  std::thread clientThread5(clientInitLoop, clientCount);
+//  clientThread5.detach();
 
-  thread first(connect1);
-  first.join();
 
-  std::vector<std::thread> v;
-  for (int i = 0; i < threadCount; ++i) {
-    v.emplace_back(clientThreadLoop, i);
-  }
-
-
+  Sleep(1000000);
 
   return 0;
 }

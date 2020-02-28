@@ -21,13 +21,13 @@ int ClientAPI::initConnection() {
 
 void ClientAPI::sendMsg(char *msg) {
 
-  strcpy(buffer,msg);
+  strcpy_s(buffer, bufferSize, msg);
   send(server, buffer, bufferSize, 0);
   memset(buffer,0, bufferSize);
 }
 
 char *ClientAPI::receiveMsg() {
-  recv(server, buffer, bufferSize, 0);
+  if (recv(server, buffer, bufferSize, 0) <= 0) { exit(0); }
   return buffer;
 }
 
