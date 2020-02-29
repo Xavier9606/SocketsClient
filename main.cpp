@@ -7,74 +7,112 @@
 #include "ClientAPI.h"
 #include <thread>
 #include <mutex>
-#include <time.h>
+#include <random>
+#include <ctime>
 
-std::mutex m;
+#ifdef NDEBUG
+const int NUMBER_OF_CLIENTS_EMULATED = 1;
+const int MASSAGE_SLEEP_TIME = 0;
+const bool LOG_TO_CONSOLE = true;
+#endif
 
-ClientAPI clients[10];
-//ClientAPI client, client2;
+#ifndef NDEBUG
+const int NUMBER_OF_CLIENTS_EMULATED = 2;
+const int MASSAGE_SLEEP_TIME = 3000;
+const bool LOG_TO_CONSOLE = true;
+#endif
+
+
+std::mt19937 gen;
+
 int clientCount = 0;
 
+struct Client {
+  ClientAPI API;
+  int id = 0;
+};
 
-void clientReceiverLoop(int clientId) {
+std::vector<Client *> clients;
+std::mutex m;
+
+
+void clientReceiverLoop(Client *currClient, int clientId) {
+  std::string msg = " ";
+  int err;
   while (true) {
-    std::cout << std::endl << "[ Client " << clientId << " ]<--" << clients[clientCount].receiveMsg() << std::endl
-              << std::flush;
-    std::cout << "[ Client " << clientId << " ]--> " << std::flush;
+    msg = currClient->API.receiveMsg(&err);
+    if (err <= 0) { break; }
+    if (LOG_TO_CONSOLE) {
+      m.lock();
+      std::cout << std::endl << "[ Client " << clientId << " ]<--" << msg << std::flush;
+      if (NUMBER_OF_CLIENTS_EMULATED < 2) {
+        std::cout << std::endl << "[ Client " << clientId << " ]--> " << std::flush;
+      }
+      m.unlock();
+    }
   }
 }
 
-
 void clientInitLoop() {
   m.lock();
-  clients[clientCount].initConnection();
-  // Sleep(500);
-  int clientId = strtol(clients[clientCount].receiveMsg(), nullptr, 0);
+  clients.push_back(new Client);
+  clients[clientCount]->API.initConnection();
+  clients[clientCount]->id = strtol(clients[clientCount]->API.receiveMsg(), nullptr, 0);
+  Client *currentClient = clients[clientCount];
   clientCount++;
-  if (clientCount > 0) { clientCount = 0; };//comment this to create more than 1 thread in 1 file
-  std::cout << "Client " << clientId << " active" << std::endl;
+
+  //if (LOG_TO_CONSOLE) {
+  std::cout << "Client " << currentClient->id << " active" << std::endl;
+//  }
   m.unlock();
 
   std::string massage = " ";
-  std::thread clientReceiver(clientReceiverLoop, clientId);
+  std::thread clientReceiver(clientReceiverLoop, currentClient, currentClient->id);
 
-  // int i = 0;
+  int i = 0;
   while (true) {
-//    massage = "Rep ";
-//    massage += std::to_string(rand() % 100);
-//    massage += " # ";
-//    massage += std::to_string(i);
-    std::cout << "[ Client " << clientId << " ]--> " << std::flush;
-    std::cin.getline((char *) massage.c_str(), 1024);
-    //std::cout << std::endl << std::flush;
-    clients[clientCount].sendMsg((char *) massage.c_str());
-    //i++;
-    Sleep(10);
+    if (NUMBER_OF_CLIENTS_EMULATED < 2 && LOG_TO_CONSOLE) {
+      std::cout << "[ Client " << currentClient->id << " ]--> " << std::flush;
+      std::cin.getline((char *) massage.c_str(), 1024);
+      //massage+='\0';
+      //std::cout << std::endl << std::flush;
+    } else {
+      m.lock();
+      massage = "Rep ";
+      massage += std::to_string(gen() % 100);
+      massage += " # ";
+      massage += std::to_string(i);
+      //std::cout<<"[ Client " << currentClient->id << " ]"<<massage<<std::endl;
+      i++;
+      m.unlock();
+    }
+    currentClient->API.sendMsg((char *) massage.c_str());
+
+    Sleep(MASSAGE_SLEEP_TIME);
   }
 
+}
+
+void connectionMaster(int count) {
+  while (count) {
+    m.lock();
+    std::thread clientThread(clientInitLoop);
+    clientThread.detach();
+    count--;
+    m.unlock();
+  }
 }
 
 
 int main() {
-  srand(time(NULL));
-
-  std::thread clientThread1(clientInitLoop);
-  clientThread1.detach();
-  //Sleep(500);
-//  std::thread clientThread2(clientInitLoop);
-//  clientThread2.detach();
-// // Sleep(500);
-//  std::thread clientThread3(clientInitLoop, clientCount);
-//  clientThread3.detach();
-// // Sleep(500);
-//  std::thread clientThread4(clientInitLoop, clientCount);
-//  clientThread4.detach();
-// // Sleep(500);
-//  std::thread clientThread5(clientInitLoop, clientCount);
-//  clientThread5.detach();
+  gen.seed(time(0));
 
 
-  Sleep(1000000);
+  std::thread connectionMasterLoop(connectionMaster, NUMBER_OF_CLIENTS_EMULATED);
+  connectionMasterLoop.detach();
 
+  while (1) {
+    Sleep(10000);
+  }
   return 0;
 }

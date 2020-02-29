@@ -23,21 +23,26 @@ void ClientAPI::sendMsg(char *msg) {
 
   strcpy_s(buffer, bufferSize, msg);
   send(server, buffer, bufferSize, 0);
-  memset(buffer,0, bufferSize);
+  memset(buffer, 0, bufferSize);
 }
 
-char *ClientAPI::receiveMsg() {
-  if (recv(server, buffer, bufferSize, 0) <= 0) { exit(0); }
+char *ClientAPI::receiveMsg(int *err) {
+  *err = recv(server, buffer, bufferSize, 0);
   return buffer;
 }
 
-void ClientAPI::setBufferSize(int size){
-  delete[] buffer;
-  bufferSize=size;
-  buffer = new char [bufferSize];
+char *ClientAPI::receiveMsg() {
+  if (recv(server, buffer, bufferSize, 0) <= 0) { exit(0); };
+  return buffer;
 }
 
-void ClientAPI::destroyConnection(){
+void ClientAPI::setBufferSize(int size) {
+  delete[] buffer;
+  bufferSize = size;
+  buffer = new char[bufferSize];
+}
+
+void ClientAPI::destroyConnection() {
   closesocket(server);
   WSACleanup();
 }
