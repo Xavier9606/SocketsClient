@@ -17,9 +17,9 @@ const bool LOG_MASSAGES_TO_CONSOLE = true;
 #endif
 
 #ifndef NDEBUG
-const int NUMBER_OF_CLIENTS_EMULATED = 2;
+const int NUMBER_OF_CLIENTS_EMULATED = 1;
 const int MASSAGE_SLEEP_TIME = 0;
-const bool LOG_MASSAGES_TO_CONSOLE = false;
+const bool LOG_MASSAGES_TO_CONSOLE = true;
 #endif
 
 
@@ -41,7 +41,7 @@ void clientReceiverLoop(Client *currClient, int clientId) {
   std::string msg = " ";
   int err;
   while (true) {
-    msg = currClient->API.receiveMsg(&err);
+    msg.assign(currClient->API.receiveMsg(&err));
     if (err <= 0) { break; }
     if (LOG_MASSAGES_TO_CONSOLE) {
       m.lock();
@@ -56,11 +56,12 @@ void clientReceiverLoop(Client *currClient, int clientId) {
 
 void clientInitLoop() {
   m.lock();
-  clients.push_back(new Client);
-  clients[clientCount]->API.initConnection();
+  Client *currentClient = new Client();
+  clients.emplace_back(currentClient);
+  currentClient->API.initConnection();
+  //currentClient->API.setBufferSize(5000);
   lastConnectionSuccessful = true;
-  clients[clientCount]->id = strtol(clients[clientCount]->API.receiveMsg(), nullptr, 0);
-  Client *currentClient = clients[clientCount];
+  currentClient->id = strtol(currentClient->API.receiveMsg(), nullptr, 0);
   clientCount++;
 
   //if (LOG_MASSAGES_TO_CONSOLE) {
@@ -72,12 +73,16 @@ void clientInitLoop() {
   std::thread clientReceiver(clientReceiverLoop, currentClient, currentClient->id);
   clientReceiver.detach();
 
+  auto messageBuffer = new char[1024];
+
   int i = 0;
   while (true) {
     if (NUMBER_OF_CLIENTS_EMULATED < 2 && LOG_MASSAGES_TO_CONSOLE) {
       std::cout << "[ Client " << currentClient->id << " ]--> " << std::flush;
-      std::cin.getline((char *) massage.c_str(), 1024);
-      massage += '\0';
+      std::cin.getline(messageBuffer, 1024);
+
+      massage.assign(messageBuffer);
+      //massage += '\0';
       //std::cout << std::endl << std::flush;
     } else {
       // m.lock();
@@ -89,7 +94,10 @@ void clientInitLoop() {
       i++;
       //m.unlock();
     }
-    currentClient->API.sendMsg((char *) massage.c_str());
+
+    memcpy(messageBuffer, massage.c_str(), massage.size());
+
+    currentClient->API.sendMsg(messageBuffer, massage.size());
 
     Sleep(MASSAGE_SLEEP_TIME);
   }

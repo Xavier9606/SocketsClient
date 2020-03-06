@@ -14,7 +14,7 @@ private:
 public:
   int initConnection();
 
-  void sendMsg(char *msg);
+  void sendMsg(char *msg, int size);
 
   char *receiveMsg(int *err);
 

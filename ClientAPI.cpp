@@ -19,14 +19,14 @@ int ClientAPI::initConnection() {
   return server;
 }
 
-void ClientAPI::sendMsg(char *msg) {
-
-  strcpy_s(buffer, bufferSize, msg);
-  send(server, buffer, bufferSize, 0);
-  memset(buffer, 0, bufferSize);
+void ClientAPI::sendMsg(char *msg, int size) {
+  strcpy_s(buffer, size, msg);
+  send(server, buffer, size, 0);
+  clearBuffer();
 }
 
 char *ClientAPI::receiveMsg(int *err) {
+  clearBuffer();
   *err = recv(server, buffer, bufferSize, 0);
   return buffer;
 }
