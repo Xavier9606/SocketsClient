@@ -17,8 +17,8 @@ const bool LOG_MASSAGES_TO_CONSOLE = true;
 #endif
 
 #ifndef NDEBUG
-const int NUMBER_OF_CLIENTS_EMULATED = 1;
-const int MASSAGE_SLEEP_TIME = 0;
+const int NUMBER_OF_CLIENTS_EMULATED = 3;
+const int MASSAGE_SLEEP_TIME = 1000;
 const bool LOG_MASSAGES_TO_CONSOLE = true;
 #endif
 
@@ -57,11 +57,13 @@ void clientReceiverLoop(Client *currClient, int clientId) {
 void clientInitLoop() {
   m.lock();
   Client *currentClient = new Client();
+  currentClient->API.clearBuffer();
   clients.emplace_back(currentClient);
   currentClient->API.initConnection();
   //currentClient->API.setBufferSize(5000);
   lastConnectionSuccessful = true;
   currentClient->id = strtol(currentClient->API.receiveMsg(), nullptr, 0);
+  currentClient->API.clearBuffer();
   clientCount++;
 
   //if (LOG_MASSAGES_TO_CONSOLE) {

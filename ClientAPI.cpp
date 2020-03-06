@@ -20,7 +20,7 @@ int ClientAPI::initConnection() {
 }
 
 void ClientAPI::sendMsg(char *msg, int size) {
-  strcpy_s(buffer, size, msg);
+  memcpy(buffer, msg, size);
   send(server, buffer, size, 0);
   clearBuffer();
 }
